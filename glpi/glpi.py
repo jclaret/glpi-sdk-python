@@ -336,7 +336,7 @@ class GlpiService(object):
             payload ={'expand_dropdowns': str(expand_dropdowns).lower()}
         else:
             payload ={}
-        res = self.request('GET', self.uri, params=payload )
+        res = self.request('GET', self.uri, params=payload)
         return res.json()
 
     def get(self, item_id, expand_dropdowns=False):
