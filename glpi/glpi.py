@@ -23,6 +23,7 @@ import logging
 import requests
 from requests.structures import CaseInsensitiveDict
 from .version import __version__
+from win32com.client.selecttlb import FLAG_CONTROL
 
 if sys.version_info[0] > 2:
     from html.parser import HTMLParser
@@ -115,7 +116,7 @@ class GlpiService(object):
 
     def __init__(self, url_apirest, token_app, uri=None,
                  username=None, password=None, token_auth=None,
-                 use_vcap_services=False, vcap_services_name=None):
+                 use_vcap_services=False, vcap_services_name=None, sslverify=True):
         """
         [TODO] Loads credentials from the VCAP_SERVICES environment variable if
         available, preferring credentials explicitly set in the request.
@@ -134,6 +135,7 @@ class GlpiService(object):
         self.username = username
         self.password = password
         self.token_auth = token_auth
+        self.sslverify = sslverify
 
         self.session = None
 
@@ -211,7 +213,7 @@ class GlpiService(object):
             auth = (self.username, self.password)
 
         r = requests.request('GET', full_url,
-                             auth=auth, headers=headers)
+                             auth=auth, headers=headers, verify=self.sslverify)
 
         try:
             if r.status_code == 200:
@@ -289,7 +291,7 @@ class GlpiService(object):
         try:
             response = requests.request(method=method, url=full_url,
                                         headers=headers, params=params,
-                                        data=data, **kwargs)
+                                        data=data, verify=self.sslverify, **kwargs)
         except Exception:
             logger.error("ERROR requesting uri(%s) payload(%s)" % (url, data))
             raise
@@ -329,18 +331,25 @@ class GlpiService(object):
         return response.json()
 
     # [R]EAD - Retrieve Item data
-    def get_all(self):
+    def get_all(self, expand_dropdowns=False):
         """ Return all content of Item in JSON format. """
-
-        res = self.request('GET', self.uri)
+        if expand_dropdowns:
+            payload ={'expand_dropdowns': str(expand_dropdowns).lower()}
+        else:
+            payload ={}
+        res = self.request('GET', self.uri, params=payload )
         return res.json()
 
-    def get(self, item_id):
+    def get(self, item_id, expand_dropdowns=False):
         """ Return the JSON item with ID item_id. """
 
         if isinstance(item_id, int):
+            if expand_dropdowns:
+                payload ={'expand_dropdowns': str(expand_dropdowns).lower()}
+            else:
+                payload ={}
             uri = '%s/%d' % (self.uri, item_id)
-            response = self.request('GET', uri)
+            response = self.request('GET', uri, params=payload)
             return response.json()
         else:
             return {'error_message': 'Unale to get %s ID [%s]' % (self.uri,
@@ -411,12 +420,13 @@ class GLPI(object):
     __version__ = __version__
 
     def __init__(self, url, app_token, auth_token,
-                 item_map=None):
+                 item_map=None, sslverify=True):
         """ Construct generic object """
 
         self.url = url
         self.app_token = app_token
         self.auth_token = auth_token
+        self.sslverify = sslverify
 
         self.item_uri = None
         self.item_map = {
@@ -476,7 +486,7 @@ class GLPI(object):
         """ Initialize the API Rest connection """
 
         self.api_rest = GlpiService(self.url, self.app_token,
-                                    token_auth=self.auth_token)
+                                    token_auth=self.auth_token, sslverify=self.sslverify)
 
         try:
             self.api_session = self.api_rest.get_session_token()
@@ -511,19 +521,19 @@ class GLPI(object):
             return {'{}'.format(e)}
 
     # [R]EAD - Retrieve Item data
-    def get_all(self, item_name):
+    def get_all(self, item_name, expand_dropdowns=False):
         """ Get all resources from item_name """
         try:
             if not self.api_has_session():
                 self.init_api()
 
             self.update_uri(item_name)
-            return self.api_rest.get_all()
+            return self.api_rest.get_all(expand_dropdowns)
 
         except GlpiException as e:
             return {'{}'.format(e)}
 
-    def get(self, item_name, item_id=None):
+    def get(self, item_name, item_id=None, expand_dropdowns=False):
         """ Get item_name and/with resource by ID """
         try:
             if not self.api_has_session():
@@ -534,7 +544,7 @@ class GLPI(object):
             if item_id is None:
                 return self.api_rest.get_path(item_name)
 
-            return self.api_rest.get(item_id)
+            return self.api_rest.get(item_id, expand_dropdowns)
 
         except GlpiException as e:
             return {'{}'.format(e)}
@@ -567,7 +577,7 @@ class GLPI(object):
         """ TODO: Search in metacriteria in source Item """
         return {"message_info": "Not implemented yet"}
 
-    def search(self, item_name, criteria):
+    def search(self, item_name, criteria, expand_dropdowns=False):
         """ #SHOULD BE IMPROVED
         Return an Item with that matchs with criteria
         criteria: [
@@ -578,7 +588,7 @@ class GLPI(object):
         ]
         """
         if 'criteria' in criteria:
-            data = self.get_all(item_name)
+            data = self.get_all(item_name, expand_dropdowns)
             return self.search_criteria(data, criteria['criteria'])
         elif 'metacriteria' in criteria:
             return self.search_metacriteria(criteria['metacriteria'])
