@@ -23,7 +23,6 @@ import logging
 import requests
 from requests.structures import CaseInsensitiveDict
 from .version import __version__
-from win32com.client.selecttlb import FLAG_CONTROL
 
 if sys.version_info[0] > 2:
     from html.parser import HTMLParser
