@@ -333,9 +333,9 @@ class GlpiService(object):
     def get_all(self, expand_dropdowns=False):
         """ Return all content of Item in JSON format. """
         if expand_dropdowns:
-            payload ={'expand_dropdowns': str(expand_dropdowns).lower()}
+            payload = {'expand_dropdowns': str(expand_dropdowns).lower()}
         else:
-            payload ={}
+            payload = {}
         res = self.request('GET', self.uri, params=payload)
         return res.json()
 
@@ -344,9 +344,9 @@ class GlpiService(object):
 
         if isinstance(item_id, int):
             if expand_dropdowns:
-                payload ={'expand_dropdowns': str(expand_dropdowns).lower()}
+                payload = {'expand_dropdowns': str(expand_dropdowns).lower()}
             else:
-                payload ={}
+                payload = {}
             uri = '%s/%d' % (self.uri, item_id)
             response = self.request('GET', uri, params=payload)
             return response.json()
