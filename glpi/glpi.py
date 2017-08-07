@@ -23,6 +23,8 @@ import logging
 import requests
 from requests.structures import CaseInsensitiveDict
 from .version import __version__
+from _cffi_backend import string
+from glpi_auth import GLpiAuth
 
 if sys.version_info[0] > 2:
     from html.parser import HTMLParser
@@ -207,7 +209,10 @@ class GlpiService(object):
                    "Content-Type": "application/json"}
 
         if self.token_auth is not None:
-            auth = self.token_auth
+            if isinstance(self.token_auth, str):
+                auth = GLpiAuth(self.token_auth)
+            else:
+                auth = self.token_auth
         else:
             auth = (self.username, self.password)
 

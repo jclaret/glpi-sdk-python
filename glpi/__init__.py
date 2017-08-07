@@ -20,3 +20,4 @@ from .item_knowbase import GlpiKnowBase  # noqa
 from .item_knowbase import KnowBase  # noqa
 from .item_ticket import GlpiTicket  # noqa
 from .item_ticket import Ticket  # noqa
+from .glpi_auth import GLpiAuth
