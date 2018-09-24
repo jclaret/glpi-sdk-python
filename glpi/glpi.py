@@ -117,7 +117,8 @@ class GlpiService(object):
 
     def __init__(self, url_apirest, token_app, uri=None,
                  username=None, password=None, token_auth=None,
-                 use_vcap_services=False, vcap_services_name=None, sslverify=True, writable = False):
+                 use_vcap_services=False, vcap_services_name=None,
+                 sslverify=False, writable=False):
         """
         [TODO] Loads credentials from the VCAP_SERVICES environment variable if
         available, preferring credentials explicitly set in the request.
@@ -228,10 +229,12 @@ class GlpiService(object):
                 return True
             else:
                 err = _glpi_html_parser(r.content)
-                raise GlpiException("Init session to GLPI server fails: %s" % err)
+                raise GlpiException("Init session to GLPI server fails: %s" %
+                                    err)
         except Exception:
             err = _glpi_html_parser(r.content)
-            raise GlpiException("ERROR when try to init session in GLPI server: %s" % err)
+            raise GlpiException("ERROR when try to init session in GLPI\
+                                server:%s" % err)
 
         return False
 
@@ -281,7 +284,8 @@ class GlpiService(object):
                 self.set_session_token()
             headers.update({'Session-Token': self.session})
         except GlpiException as e:
-            raise GlpiException("Unable to get Session token. ERROR: {}".format(e))
+            raise GlpiException("Unable to get Session token. \
+                                ERROR: {}".format(e))
 
         if self.app_token is not None:
             headers.update({'App-Token': self.app_token})
@@ -298,7 +302,8 @@ class GlpiService(object):
         try:
             response = requests.request(method=method, url=full_url,
                                         headers=headers, params=params,
-                                        data=data, verify=self.sslverify, **kwargs)
+                                        data=data, verify=self.sslverify,
+                                        **kwargs)
         except Exception:
             logger.error("ERROR requesting uri(%s) payload(%s)" % (url, data))
             raise
@@ -321,7 +326,8 @@ class GlpiService(object):
             else:
                 data_str = '%s "%s": %s' % (data_str, k, str(data_json[k]))
 
-        return data_str.replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '')
+        return data_str.replace('\\', '\\\\').replace('\n', '\\n').\
+            replace('\r', '')
 
     """ Generic Items methods """
     # [C]REATE - Create an Item
@@ -334,7 +340,8 @@ class GlpiService(object):
         payload = '{"input": { %s }}' % (self.get_payload(data_json))
         print(payload)
 
-        response = self.request('POST', self.uri, data=payload, accept_json=True)
+        response = self.request('POST', self.uri, data=payload,
+                                accept_json=True)
 
         return response.json()
 
@@ -428,7 +435,7 @@ class GLPI(object):
     __version__ = __version__
 
     def __init__(self, url, app_token, auth_token,
-                 item_map=None, sslverify=True, writable = False):
+                 item_map=None, sslverify=True, writable=False):
         """ Construct generic object """
 
         self.url = url
@@ -495,7 +502,9 @@ class GLPI(object):
         """ Initialize the API Rest connection """
 
         self.api_rest = GlpiService(self.url, self.app_token,
-                                    token_auth=self.auth_token, sslverify=self.sslverify, writable = self.writable)
+                                    token_auth=self.auth_token,
+                                    sslverify=self.sslverify,
+                                    writable=self.writable)
 
         try:
             self.api_session = self.api_rest.get_session_token()
@@ -530,8 +539,8 @@ class GLPI(object):
             return {'{}'.format(e)}
 
     # [R]EAD - Retrieve Item data
-    def get_all(self, item_name, expand_dropdowns=False, searchText=None ):
-        """ Get all resources from item_name 
+    def get_all(self, item_name, expand_dropdowns=False, searchText=None):
+        """ Get all resources from item_name
         criteria: [
             {
                 "field": "name",
@@ -547,12 +556,12 @@ class GLPI(object):
                     uri = ""
                 else:
                     uri = "&"
-                uri_query = uri_query + "searchText[%s]=%s" % (c['field'], c['value'])
+                uri_query = uri_query + "searchText[%s]=%s" % (c['field'],
+                                                               c['value'])
                 s_index += 1
         else:
-            uri_query = ""
-        
-        
+            uri_query = "?range=0-5000"
+
         try:
             if not self.api_has_session():
                 self.init_api()
@@ -652,9 +661,19 @@ class GLPI(object):
         GLPIs APIREST JSON formated with result of search in key 'data'.
         """
         field_map = {
-            "id": 2,
             "name": 1,
+            "id": 2,
+            "location": 3,
+            "type": 4,
+            "serialnumber": 5,
             "body": 6,
+            "processor": 17,
+            "lastupdate": 19,
+            "manufacturer": 23,
+            "status": 31,
+            "model": 40,
+            "tags": 10500,
+            "operatingsystem": 45
         }
         s_index = 0
         uri_query = "%s?" % item_name
@@ -677,6 +696,7 @@ class GLPI(object):
             uri_query = uri_query + uri
             s_index += 1
 
+        uri_query = uri_query + "&range=0-5000"
         try:
             if not self.api_has_session():
                 self.init_api()
